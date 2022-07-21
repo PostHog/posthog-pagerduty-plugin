@@ -39,7 +39,7 @@ async function isTrendErroring(meta) {
     // Only consider the two most recent data points
     const latestDataPoints = result.data.slice(-2);
 
-    return latestDataPoints.some((value) =>
+    return latestDataPoints.every((value) =>
         dataPointInError(value, parseFloat(meta.config.threshold), meta.config.operator)
     )
 }
