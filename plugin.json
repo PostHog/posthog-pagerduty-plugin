@@ -71,7 +71,7 @@
             "key": "pagerdutyIncidentSummary",
             "name": "PagerDuty Incident Summary",
             "type": "string",
-            "default": "Posthog query returned no results",
+            "default": "Posthog query returned result outside threshold",
             "required": true
         },
         {
