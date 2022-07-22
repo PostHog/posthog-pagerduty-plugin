@@ -47,6 +47,15 @@
             "required": true
         },
         {
+            "key": "posthogProjectId",
+            "hint": "The ID of the current project, which can be found in Project settings",
+            "name": "PostHog Project ID",
+            "type": "string",
+            "secret": false,
+            "default": "",
+            "required": true
+        },
+        {
             "markdown": "PagerDuty & incident configuration"
         },
         {
@@ -62,7 +71,7 @@
             "key": "pagerdutyIncidentSummary",
             "name": "PagerDuty Incident Summary",
             "type": "string",
-            "default": "Posthog query returned no results",
+            "default": "Posthog query returned result outside threshold",
             "required": true
         },
         {

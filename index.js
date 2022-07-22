@@ -20,9 +20,27 @@ export async function runEveryMinute(meta) {
 }
 
 async function isTrendErroring(meta) {
-    const { data } = await getTrend(meta)
-    return !data.slice(-2).some((value) =>
-        !dataPointInError(value, parseFloat(meta.config.threshold), meta.config.operator)
+    const insight = await getTrend(meta)
+
+    if(insight.filters.insight !== "TRENDS") {
+        throw "The provided insight is not a trend"
+    }
+
+    const result = insight.result?.[0]
+
+    if(!result) {
+        console.warn("Insight returned no result")
+        return
+    } else if(result.data.length === 0) {
+        console.warn("Insight returned no data")
+        return
+    }
+
+    // Only consider the two most recent data points
+    const latestDataPoints = result.data.slice(-2);
+
+    return latestDataPoints.every((value) =>
+        dataPointInError(value, parseFloat(meta.config.threshold), meta.config.operator)
     )
 }
 
@@ -35,7 +53,14 @@ function dataPointInError(value, threshold, operator) {
 }
 
 async function getTrend(meta) {
-    const response = await fetch(insightsApiUrl(meta.config.posthogTrendUrl), {
+    const insightId = insightIdFromUrl(meta.config.posthogTrendUrl)
+
+    const apiUrl = new URL(
+        `/api/projects/${meta.config.posthogProjectId}/insights?short_id=${insightId}`,
+        meta.config.posthogTrendUrl
+    )
+
+    const response = await fetch(apiUrl, {
         headers: {
             authorization: `Bearer ${meta.config.posthogApiKey}`
         }
@@ -45,10 +70,10 @@ async function getTrend(meta) {
         throw Error(`Error from PostHog API: status=${response.status} response=${await response.text()}`)
     }
 
-    const results = await response.json()
+    const { results } = await response.json()
 
-    console.log('Got PostHog trends response', results)
-    return results.result[0]
+    // console.log('Got PostHog trends results', results)
+    return results[0]
 }
 
 async function triggerPagerduty(meta) {
@@ -92,7 +117,8 @@ async function triggerPagerduty(meta) {
 }
 
 async function resolvePagerduty(incidentKey, meta) {
-    const response = await fetch('https://events.pagerduty.com/v2/enqueue', {
+    // TODO: Should check whether this response was successful
+    await fetch('https://events.pagerduty.com/v2/enqueue', {
         method: 'post',
         headers: {
             'Content-Type': 'application/json',
@@ -108,17 +134,18 @@ async function resolvePagerduty(incidentKey, meta) {
     await meta.cache.set("pagerduty_active_incident", null)
 }
 
-function insightsApiUrl(trendsUrl) {
-    let url = new URL(trendsUrl)
+function insightIdFromUrl(trendsUrl) {
+    const url = new URL(trendsUrl)
 
-    url.searchParams.set('refresh', 'true')
-    if (url.pathname === '/insights') {
-        url = new URL(`${url.origin}/api/insight/trend${url.search}${url.hash}`)
+    if (url.pathname.startsWith('/insights')) {
+        const [_, insightId] = /\/insights\/([a-zA-Z0-9]*)$/.exec(url.pathname)
+
+        if(!insightId) {
+            throw Error(`Not a valid trends URL: ${trendsUrl}`)
+        }
+
+        return insightId
     }
 
-    if (!url.pathname.startsWith('/api/insight/trend')) {
-        throw Error(`Not a valid trends URL: ${trendsUrl}`)
-    }
-
-    return url.href
+    throw Error(`Not a valid trends URL: ${trendsUrl}`)
 }
