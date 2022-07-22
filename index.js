@@ -87,7 +87,7 @@ async function triggerPagerduty(meta) {
             "routing_key": meta.config.pagerdutyIntegrationKey,
             "event_action": "trigger",
             "payload": {
-                "summary": `${meta.config.pagerdutyIncidentSummary} - query returned 0`,
+                "summary": meta.config.pagerdutyIncidentSummary,
                 "source": meta.config.posthogHost,
                 "severity": "critical",
             },
